@@ -57,4 +57,3 @@ form.addEventListener('change', calc);
 form.addEventListener('input', calc);
 calc();
 
-

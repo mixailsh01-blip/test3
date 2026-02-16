@@ -17,7 +17,7 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 90px;
+  scroll-padding-top: 110px;
 }
 
 body {
@@ -38,11 +38,14 @@ a {
 }
 
 .site-header {
-  position: sticky;
+  position: absolute;
   top: 0;
+  left: 0;
+  width: 100%;
   z-index: 10;
-  background: #f3f0ec;
-  border-bottom: 1px solid var(--line);
+  background: transparent;
+  border-bottom: none;
+  transition: background 0.25s ease;
 }
 
 .site-header .wrap {
@@ -138,7 +141,7 @@ a {
 .hero {
   position: relative;
   overflow: hidden;
-  padding: 80px 0 120px;
+  padding: 150px 0 120px;
 }
 
 .hero-video {
@@ -151,7 +154,8 @@ a {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scale(1.02);
+  transform: scale(1.28);
+  transform-origin: center center;
   z-index: 0;
 }
 
@@ -264,6 +268,22 @@ h1 {
 
 .hero-video .site-nav a:hover {
   color: #ffffff;
+}
+
+.site-header .site-nav,
+.site-header .brand-tag {
+  color: rgba(247, 244, 241, 0.78);
+}
+
+.site-header .site-nav a:hover {
+  border-color: rgba(247, 244, 241, 0.95);
+  color: #ffffff;
+}
+
+.site-header .btn.ghost {
+  color: #ffffff;
+  border-color: rgba(247, 244, 241, 0.45);
+  background: rgba(18, 16, 14, 0.15);
 }
 
 .lead-form {
@@ -505,6 +525,10 @@ h1 {
 }
 
 @media (max-width: 640px) {
+  .hero-bg {
+    transform: scale(1.42);
+  }
+
   .header-cta {
     flex-direction: column;
     align-items: stretch;
