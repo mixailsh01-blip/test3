@@ -1,6 +1,5 @@
 ﻿const priceEl = document.getElementById('calc-price');
 const form = document.getElementById('calc-form');
-const heroVideo = document.querySelector('.hero-bg');
 
 const base = {
   classic: 38000,
@@ -58,13 +57,4 @@ form.addEventListener('change', calc);
 form.addEventListener('input', calc);
 calc();
 
-if (heroVideo) {
-  heroVideo.muted = true;
-  const playAttempt = heroVideo.play();
-  if (playAttempt && typeof playAttempt.catch === 'function') {
-    playAttempt.catch(() => {
-      heroVideo.setAttribute('data-autoplay', 'blocked');
-    });
-  }
-}
 
