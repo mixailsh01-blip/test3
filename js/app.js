@@ -260,8 +260,14 @@ const handleQrResult = (data, stream) => {
 
     if (window.API?.sendQrData) {
       window.API.sendQrData(data, user)
-        .then(() => {
-          alert('QR-код распознан и отправлен: ' + data);
+        .then((result) => {
+          const restaurants = normalizeRestaurantsFromQrResponse(result);
+          if (restaurants.length > 0) {
+            applyRestaurants(restaurants);
+            alert('Заведение привязано: ' + restaurants[0].name);
+          } else {
+            alert('QR отправлен, но заведение не получено');
+          }
         })
         .catch((error) => {
           console.error('Ошибка отправки QR в вебхук:', error);
@@ -273,6 +279,44 @@ const handleQrResult = (data, stream) => {
   } catch (error) {
     console.error('Ошибка обработки результата QR:', error);
     alert('Не удалось обработать QR-код');
+  }
+};
+
+const normalizeRestaurantsFromQrResponse = (result) => {
+  if (!result) return [];
+  const items = Array.isArray(result) ? result : [result];
+
+  return items
+    .map((item) => {
+      const name = item?.Client ?? item?.client ?? item?.name ?? null;
+      const id = item?.ID ?? item?.id ?? item?.Id ?? null;
+      if (!name || !id) return null;
+      return { id: String(id), name: String(name) };
+    })
+    .filter(Boolean);
+};
+
+const applyRestaurants = (restaurants) => {
+  try {
+    // Обновляем dropdown на главной (через существующую логику Auth)
+    if (window.Auth?.updateRestaurants) {
+      window.Auth.updateRestaurants(restaurants);
+    }
+
+    // Обновляем список в модалке "Ваши заведения"
+    const list = document.querySelector('#establishment-modal .establishment-list');
+    if (list) {
+      list.innerHTML = '';
+      restaurants.forEach((restaurant) => {
+        const button = document.createElement('button');
+        button.className = 'establishment-item btn-RestModal w-full';
+        button.textContent = restaurant.name;
+        button.dataset.establishmentId = restaurant.id;
+        list.appendChild(button);
+      });
+    }
+  } catch (error) {
+    console.error('Ошибка обновления заведений:', error);
   }
 };
 
@@ -874,9 +918,9 @@ const setupEstablishmentSelection = () => {
   const selectedDisplay = document.getElementById('selected-establishment');
   const modal = document.getElementById('establishment-modal');
   const closeBtn = document.getElementById('close-establishment-modal-btn');
-  const establishmentItems = document.querySelectorAll('.establishment-item');
+  const establishmentList = modal?.querySelector('.establishment-list');
 
-  if (!selectBtn || !selectedDisplay || !modal || !closeBtn) return;
+  if (!selectBtn || !selectedDisplay || !modal || !closeBtn || !establishmentList) return;
 
   // Открытие модального окна
   selectBtn.addEventListener('click', (e) => {
@@ -889,28 +933,29 @@ const setupEstablishmentSelection = () => {
     modal.classList.add('hidden');
   });
 
-  // Выбор заведения
-  establishmentItems.forEach(item => {
-    item.addEventListener('click', () => {
-      const establishmentName = item.textContent.trim();
+  // Выбор заведения (делаем делегирование, т.к. список обновляется динамически)
+  establishmentList.addEventListener('click', (e) => {
+    const item = e.target.closest('.establishment-item');
+    if (!item) return;
 
-      // Сбрасываем предыдущую выбранную кнопку
-      if (currentlySelectedEstablishmentButton) {
-        currentlySelectedEstablishmentButton.classList.remove('selected');
-      }
+    const establishmentName = item.textContent.trim();
 
-      // Применяем состояние к новой
-      item.classList.add('selected');
-      currentlySelectedEstablishmentButton = item;
+    // Сбрасываем предыдущую выбранную кнопку
+    if (currentlySelectedEstablishmentButton) {
+      currentlySelectedEstablishmentButton.classList.remove('selected');
+    }
 
-      // Обновляем отображение
-      selectedDisplay.textContent = establishmentName;
-      selectedDisplay.classList.remove('text-gray-400');
-      selectedDisplay.classList.add('text-white');
+    // Применяем состояние к новой
+    item.classList.add('selected');
+    currentlySelectedEstablishmentButton = item;
 
-      // Закрываем модалку
-      modal.classList.add('hidden');
-    });
+    // Обновляем отображение
+    selectedDisplay.textContent = establishmentName;
+    selectedDisplay.classList.remove('text-gray-400');
+    selectedDisplay.classList.add('text-white');
+
+    // Закрываем модалку
+    modal.classList.add('hidden');
   });
 };
 

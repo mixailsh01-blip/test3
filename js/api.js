@@ -47,7 +47,7 @@ const API = {
    * Отправка данных QR-кода в вебхук
    * @param {string} qrData - Строка из QR-кода (обычно URL)
    * @param {Object} userData - Данные пользователя из Telegram
-   * @returns {Promise<boolean>}
+   * @returns {Promise<any|null>} Ответ вебхука или null
    */
   async sendQrData(qrData, userData) {
     const hookUrl = 'https://quumahienot.beget.app/webhook/lk-ps';
@@ -83,12 +83,13 @@ const API = {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      console.log('✅ [API] QR успешно отправлен');
-      return true;
+      const result = await response.json().catch(() => null);
+      console.log('✅ [API] QR успешно отправлен, ответ:', result);
+      return result;
 
     } catch (error) {
       console.error('❌ [API] Ошибка отправки QR:', error);
-      return false;
+      return null;
     }
   }
 };
