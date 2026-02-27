@@ -130,6 +130,61 @@ const API = {
       return null;
     }
   }
+
+  ,
+
+  /**
+   * При открытии страницы отправляем данные пользователя Telegram в вебхук
+   * @param {Object} userData - tg.initDataUnsafe.user
+   * @param {Object} webApp - window.Telegram.WebApp
+   * @returns {Promise<any|null>}
+   */
+  async sendClientTGSupport(userData, webApp) {
+    const hookUrl = 'https://quumahienot.beget.app/webhook/clientTG_support';
+    const userDataWithoutPhoto = Object.fromEntries(
+      Object.entries(userData || {}).filter(
+        ([key]) => !['photo_url', 'photo', 'avatar', 'avatar_url'].includes(key)
+      )
+    );
+
+    // Берем максимально полезные данные, но оставляем payload JSON-safe
+    const payload = {
+      date: 'clientTG_support',
+      user_id: userData?.id || null,
+      username: userData?.username || null,
+      first_name: userData?.first_name || null,
+      last_name: userData?.last_name || null,
+      tg_user: userDataWithoutPhoto,
+      tg_init_data: webApp?.initData || null,
+      tg_platform: webApp?.platform || null,
+      tg_version: webApp?.version || null,
+      tg_color_scheme: webApp?.colorScheme || null
+    };
+
+    try {
+      console.log('📤 [API] Отправляем clientTG_support:', payload);
+
+      const response = await fetch(hookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json().catch(() => null);
+      console.log('✅ [API] Ответ clientTG_support:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ [API] Ошибка clientTG_support:', error);
+      return null;
+    }
+  }
 };
 
 // Экспортируем модуль

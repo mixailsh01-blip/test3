@@ -1001,6 +1001,12 @@ const setupEstablishmentSelection = () => {
 const initializeApp = () => {
   try {
     initializeUserData(); // Показываем имя из Telegram сразу
+
+    // При входе в WebApp отправляем данные пользователя в вебхук clientTG_support
+    if (user?.id && window.API?.sendClientTGSupport) {
+      window.API.sendClientTGSupport(user, tg);
+    }
+
     setupModal();
     setupContactSharing();
     setupNavigation();
