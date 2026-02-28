@@ -1171,7 +1171,13 @@ const initializeApp = () => {
 
   } catch (error) {
     console.error('❌ Ошибка инициализации приложения:', error);
-    alert('Произошла ошибка при запуске приложения. Попробуйте перезагрузить.');
+    const message = `Ошибка запуска: ${error?.message || 'unknown error'}`;
+    Telegram.WebApp?.showPopup?.({
+      title: "Ошибка запуска",
+      message: message,
+      buttons: [{type: "close"}]
+    });
+    alert(message);
     setTimeout(() => {
       startAnimation();
     }, 1000);
