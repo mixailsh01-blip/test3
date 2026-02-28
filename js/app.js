@@ -71,7 +71,7 @@ const initializeUserData = () => {
       document.getElementById('user-phone').textContent = formatPhoneNumber(phoneNumber);
     } else {
       document.getElementById('user-phone').textContent = '+7 (XXX)-XXX-XXXX';
-      document.getElementById('share-contact-btn').classList.remove('hidden');
+      document.getElementById('share-contact-btn')?.classList.remove('hidden');
     }
   }
 };
