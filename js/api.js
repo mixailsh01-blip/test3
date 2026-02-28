@@ -97,13 +97,18 @@ const API = {
   /**
    * Второй вебхук: передаем массив заведений [{Client, ID}]
    * @param {Array|Object} establishmentsPayload - Массив или один объект {Client, ID}
+   * @param {Object|null} userData - Данные пользователя Telegram
    * @returns {Promise<any|null>} Ответ вебхука или null
    */
-  async sendTaskSupport(establishmentsPayload) {
+  async sendTaskSupport(establishmentsPayload, userData = null) {
     const hookUrl = 'https://quumahienot.beget.app/webhook/task_support';
-    const payload = Array.isArray(establishmentsPayload)
+    const basePayload = Array.isArray(establishmentsPayload)
       ? establishmentsPayload
       : (establishmentsPayload ? [establishmentsPayload] : []);
+    const payload = basePayload.map((item) => ({
+      ...item,
+      Iduser: userData?.id || null
+    }));
 
     try {
       console.log('📤 [API] Отправляем task_support:', payload);

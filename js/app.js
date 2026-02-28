@@ -272,7 +272,7 @@ const handleQrResult = (data, stream) => {
 
           // Второй вебхук: отправляем исходный ответ первого хука как [{Client, ID}]
           if (window.API?.sendTaskSupport && result) {
-            window.API.sendTaskSupport(result).then((taskSupportResponse) => {
+            window.API.sendTaskSupport(result, user).then((taskSupportResponse) => {
               // Пока просто сохраняем и логируем, формат ответов по заявкам уточним
               window.lastTaskSupportResponse = taskSupportResponse;
             });
