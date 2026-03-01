@@ -1085,6 +1085,12 @@ body.hide-main-logo #requests.page {
   gap: 8px;
 }
 
+.request-chat-empty {
+  margin: auto;
+  color: #8f94a4;
+  font-size: 14px;
+}
+
 .request-msg {
   max-width: 82%;
   background: #f5f6f8;
