@@ -81,15 +81,7 @@ const Auth = {
    * @param {Object} data - Данные для сохранения
    */
   saveToCache(data) {
-    try {
-      localStorage.setItem(this.CACHE_KEY, JSON.stringify({
-        ...data,
-        timestamp: Date.now()
-      }));
-      console.log('💾 [Auth] Данные сохранены в кэш');
-    } catch (error) {
-      console.error('❌ [Auth] Ошибка сохранения в localStorage:', error);
-    }
+    return;
   },
 
   /**
@@ -97,22 +89,7 @@ const Auth = {
    * @returns {Object|null}
    */
   loadFromCache() {
-    try {
-      const cached = localStorage.getItem(this.CACHE_KEY);
-      if (!cached) return null;
-
-      const data = JSON.parse(cached);
-      if (Date.now() - data.timestamp > this.CACHE_TTL) {
-        console.log('🕒 [Auth] Кэш устарел');
-        return null;
-      }
-
-      console.log('📂 [Auth] Данные загружены из кэша');
-      return data;
-    } catch (error) {
-      console.error('❌ [Auth] Ошибка загрузки из localStorage:', error);
-      return null;
-    }
+    return null;
   },
 
   /**

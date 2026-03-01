@@ -783,21 +783,6 @@ const updateContactInfo = (contact) => {
   // Прячем модалку, если она была открыта
   hideContactShareModal();
   
-  // Сохраняем в localStorage (опционально)
-  try {
-    const cachedData = JSON.parse(localStorage.getItem('user_profile_data') || '{}');
-    cachedData.phone = contact.phone_number;
-    if (contact.first_name) cachedData.firstName = contact.first_name;
-    if (contact.last_name) cachedData.lastName = contact.last_name;
-    
-    localStorage.setItem('user_profile_data', JSON.stringify({
-      ...cachedData,
-      timestamp: Date.now()
-    }));
-  } catch (e) {
-    console.error('Ошибка сохранения данных в кэш:', e);
-  }
-  
   // Показываем сообщение об успехе
   showContactInfo('Номер телефона успешно обновлен!');
   
