@@ -1116,6 +1116,102 @@ const enhanceMobileUX = () => {
 /* ==================== ВЫБОР ЗАВЕДЕНИЯ ДЛЯ СЧЕТОВ ==================== */
 
 let currentlySelectedEstablishmentButton = null;
+const requestsState = {
+  tasks: [],
+  activeTaskId: null
+};
+
+const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+const formatRequestDate = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${day}.${month} ${hours}:${minutes}`;
+};
+
+const normalizeTaskComment = (comment, fallbackText = '') => ({
+  taskId: String(comment?.task_id ?? ''),
+  commentId: String(comment?.comment_id ?? `${Date.now()}`),
+  author: String(comment?.author ?? 'Pyrus'),
+  text: String(comment?.text ?? fallbackText ?? ''),
+  date: comment?.date || new Date().toISOString(),
+  channelType: String(comment?.channel_type ?? 'custom')
+});
+
+const normalizeTaskFromWebhook = (item) => {
+  if (!item || (!item.task_id && !item.taskId)) return null;
+  const taskId = String(item.task_id ?? item.taskId);
+  const chatItems = Array.isArray(item.chat) ? item.chat : [];
+  const normalizedChat = chatItems.map((comment) => normalizeTaskComment(comment, item.description)).filter((comment) => comment.text);
+  const lastMessage = normalizedChat[normalizedChat.length - 1];
+
+  return {
+    taskId,
+    org: String(item.org ?? item.organization ?? item.Client ?? 'Без организации'),
+    description: String(item.description ?? item.text ?? ''),
+    status: String(item.status ?? 'Новая'),
+    chatId: String(item.chat_id ?? item.chatId ?? ''),
+    chat: normalizedChat,
+    createdAt: lastMessage?.date || new Date().toISOString()
+  };
+};
+
+const upsertRequestTask = (task) => {
+  if (!task?.taskId) return;
+  const existingIndex = requestsState.tasks.findIndex((item) => item.taskId === task.taskId);
+  if (existingIndex >= 0) {
+    requestsState.tasks[existingIndex] = task;
+  } else {
+    requestsState.tasks.unshift(task);
+  }
+};
+
+const renderRequestsList = () => {
+  const list = document.getElementById('requests-list');
+  if (!list) return;
+
+  if (requestsState.tasks.length === 0) {
+    list.innerHTML = '<div class="requests-empty">Заявок пока нет</div>';
+    return;
+  }
+
+  list.innerHTML = requestsState.tasks
+    .map((task) => {
+      const previewText = task.chat[task.chat.length - 1]?.text || task.description || 'Без описания';
+      return `
+        <div class="request-card" data-task-id="${escapeHtml(task.taskId)}">
+          <div class="request-card-top">
+            <span class="request-number">№${escapeHtml(task.taskId)} от ${escapeHtml(formatRequestDate(task.createdAt))}</span>
+            <span class="request-status">${escapeHtml(task.status)}</span>
+          </div>
+          <div class="request-topic">${escapeHtml(task.description || 'Новая заявка')}</div>
+          <div class="request-meta">${escapeHtml(task.org)}</div>
+          <div class="request-text">${escapeHtml(previewText)}</div>
+        </div>
+      `;
+    })
+    .join('');
+};
+
+const syncCreatedTasksFromResult = (result) => {
+  const items = Array.isArray(result) ? result : [result];
+  items
+    .map(normalizeTaskFromWebhook)
+    .filter(Boolean)
+    .forEach(upsertRequestTask);
+  renderRequestsList();
+  return requestsState.tasks[0] || null;
+};
 
 const setupEstablishmentSelection = () => {
   const selectBtn = document.getElementById('select-establishment-btn');
@@ -1310,11 +1406,18 @@ const setupTaskCreation = () => {
 
       const result = await window.API.createTaskV2(taskData, user, tg, files);
       if (result) {
+        const createdTask = syncCreatedTasksFromResult(result);
         const mainDropdown = document.getElementById('main-dropdown');
         if (mainDropdown && Array.from(mainDropdown.options).some((o) => o.value === establishmentId)) {
           mainDropdown.value = establishmentId;
         }
         closeModal();
+        document.querySelector('.nav-btn[data-page="requests"]')?.click();
+        if (createdTask?.taskId) {
+          setTimeout(() => {
+            document.querySelector(`.request-card[data-task-id="${createdTask.taskId}"]`)?.click();
+          }, 80);
+        }
       }
 
       Telegram.WebApp?.showPopup?.({
@@ -1349,7 +1452,7 @@ const setupTaskCreation = () => {
 /* ==================== ДЕТАЛИ ЗАЯВКИ ==================== */
 
 const setupRequestDetailsView = () => {
-  const sampleCard = document.getElementById('request-card-sample');
+  const requestsList = document.getElementById('requests-list');
   const dialogModal = document.getElementById('request-dialog-modal');
   const dialogChat = dialogModal?.querySelector('.request-dialog-chat');
   const backBtn = document.getElementById('request-dialog-back');
@@ -1358,7 +1461,7 @@ const setupRequestDetailsView = () => {
   const attachBtn = document.getElementById('request-dialog-attach');
   const fileInput = document.getElementById('request-dialog-file');
 
-  if (!sampleCard || !dialogModal || !dialogChat || !input || !sendBtn || !attachBtn || !fileInput) return;
+  if (!requestsList || !dialogModal || !dialogChat || !input || !sendBtn || !attachBtn || !fileInput) return;
 
   const getCurrentTimeLabel = () => {
     const now = new Date();
@@ -1367,41 +1470,48 @@ const setupRequestDetailsView = () => {
     return `${hours}:${minutes}`;
   };
 
-  const appendOutgoingMessage = (text) => {
-    if (!text) return;
-    const msg = document.createElement('div');
-    msg.className = 'request-msg request-msg-right request-msg-outgoing';
-    msg.innerHTML = `
-      <div class="request-msg-text"></div>
-      <div class="request-msg-time"></div>
-    `;
-    msg.querySelector('.request-msg-text').textContent = text;
-    msg.querySelector('.request-msg-time').textContent = getCurrentTimeLabel();
-    dialogChat.appendChild(msg);
+  const renderDialogChat = (task) => {
+    dialogChat.innerHTML = '';
+    if (!task || task.chat.length === 0) {
+      dialogChat.innerHTML = '<div class="request-chat-empty">Сообщений пока нет</div>';
+      return;
+    }
+
+    task.chat.forEach((message) => {
+      const isOutgoing = message.author !== 'Pyrus';
+      const msg = document.createElement('div');
+      msg.className = `request-msg ${isOutgoing ? 'request-msg-right request-msg-outgoing' : 'request-msg-left'}`;
+      msg.innerHTML = `
+        <div class="request-msg-author"></div>
+        <div class="request-msg-text"></div>
+        <div class="request-msg-time"></div>
+      `;
+      msg.querySelector('.request-msg-author').textContent = message.author;
+      msg.querySelector('.request-msg-text').textContent = message.text;
+      msg.querySelector('.request-msg-time').textContent = formatRequestDate(message.date) || getCurrentTimeLabel();
+      dialogChat.appendChild(msg);
+    });
+
     dialogChat.scrollTop = dialogChat.scrollHeight;
   };
 
-  const openDialog = () => {
-    const number = sampleCard.querySelector('.request-number')?.textContent?.trim() || '';
-    const status = sampleCard.querySelector('.request-status')?.textContent?.trim() || '';
-    const topic = sampleCard.querySelector('.request-topic')?.textContent?.trim() || '';
-    const meta = sampleCard.querySelector('.request-meta')?.textContent?.trim() || '';
-    const text = sampleCard.querySelector('.request-text')?.textContent?.trim() || '';
+  const openDialog = (taskId) => {
+    const task = requestsState.tasks.find((item) => item.taskId === String(taskId));
+    if (!task) return;
+    requestsState.activeTaskId = task.taskId;
 
     const dialogNumber = document.getElementById('request-dialog-number');
     const dialogStatus = document.getElementById('request-dialog-status');
     const dialogTopic = document.getElementById('request-dialog-topic');
     const dialogCompany = document.getElementById('request-dialog-company');
-    const dialogDescription = document.getElementById('request-dialog-description');
 
-    if (dialogNumber) dialogNumber.textContent = number;
-    if (dialogStatus) dialogStatus.textContent = status;
-    if (dialogTopic) dialogTopic.textContent = topic;
-    if (dialogCompany) dialogCompany.textContent = meta;
-    if (dialogDescription) dialogDescription.textContent = text;
+    if (dialogNumber) dialogNumber.textContent = `№${task.taskId} от ${formatRequestDate(task.createdAt)}`;
+    if (dialogStatus) dialogStatus.textContent = task.status;
+    if (dialogTopic) dialogTopic.textContent = task.description || 'Новая заявка';
+    if (dialogCompany) dialogCompany.textContent = task.org;
 
+    renderDialogChat(task);
     dialogModal.classList.remove('hidden');
-    dialogChat.scrollTop = dialogChat.scrollHeight;
   };
 
   const closeDialog = () => {
@@ -1411,11 +1521,28 @@ const setupRequestDetailsView = () => {
   const sendCurrentMessage = () => {
     const text = input.value.trim();
     if (!text) return;
-    appendOutgoingMessage(text);
+    const activeTask = requestsState.tasks.find((item) => item.taskId === requestsState.activeTaskId);
+    if (!activeTask) return;
+
+    activeTask.chat.push(normalizeTaskComment({
+      task_id: activeTask.taskId,
+      comment_id: `${Date.now()}`,
+      author: user?.first_name || user?.username || 'Вы',
+      text,
+      date: new Date().toISOString(),
+      channel_type: 'telegram_webapp'
+    }));
+
+    renderRequestsList();
+    renderDialogChat(activeTask);
     input.value = '';
   };
 
-  sampleCard.addEventListener('click', openDialog);
+  requestsList.addEventListener('click', (event) => {
+    const card = event.target.closest('.request-card');
+    if (!card?.dataset?.taskId) return;
+    openDialog(card.dataset.taskId);
+  });
   backBtn?.addEventListener('click', closeDialog);
   sendBtn.addEventListener('click', sendCurrentMessage);
   input.addEventListener('keydown', (event) => {
@@ -1428,7 +1555,18 @@ const setupRequestDetailsView = () => {
   fileInput.addEventListener('change', () => {
     const files = Array.from(fileInput.files || []);
     files.forEach((file) => {
-      appendOutgoingMessage(`Файл: ${file.name}`);
+      const activeTask = requestsState.tasks.find((item) => item.taskId === requestsState.activeTaskId);
+      if (!activeTask) return;
+      activeTask.chat.push(normalizeTaskComment({
+        task_id: activeTask.taskId,
+        comment_id: `${Date.now()}-${file.name}`,
+        author: user?.first_name || user?.username || 'Вы',
+        text: `Файл: ${file.name}`,
+        date: new Date().toISOString(),
+        channel_type: 'telegram_webapp'
+      }));
+      renderRequestsList();
+      renderDialogChat(activeTask);
     });
     fileInput.value = '';
   });
@@ -1437,6 +1575,8 @@ const setupRequestDetailsView = () => {
       closeDialog();
     }
   });
+
+  renderRequestsList();
 };
 
 /* ==================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ==================== */

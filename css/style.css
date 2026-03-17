@@ -1042,6 +1042,22 @@ body.hide-main-logo #requests.page {
   border-radius: 14px;
   padding: 12px 12px;
   color: #f2f3f7;
+  cursor: pointer;
+}
+
+#requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.requests-empty {
+  padding: 18px 14px;
+  border-radius: 14px;
+  background: #2f3037;
+  color: #8e92a0;
+  text-align: center;
+  font-size: 14px;
 }
 
 .request-card-top {
