@@ -263,6 +263,82 @@ const API = {
   ,
 
   /**
+   * Отправка сообщения из миниаппа в диалог заявки
+   * @param {Object} messagePayload - Данные сообщения/задачи
+   * @param {Object|null} userData - Данные пользователя Telegram
+   * @param {Object|null} webApp - Telegram WebApp
+   * @param {File[]|Array|null} files - Прикрепленные файлы
+   * @returns {Promise<any|null>} Ответ вебхука или null
+   */
+  async sendMiniappMessage(messagePayload = {}, userData = null, webApp = null, files = []) {
+    const hookUrl = 'https://quumahienot.beget.app/webhook/message_miniapp';
+    const payload = {
+      task_id: messagePayload?.task_id ?? messagePayload?.taskId ?? null,
+      chat_id: messagePayload?.chat_id ?? messagePayload?.chatId ?? null,
+      org: messagePayload?.org ?? null,
+      Client: messagePayload?.Client ?? messagePayload?.org ?? null,
+      ID: messagePayload?.ID ?? messagePayload?.establishment_id ?? null,
+      text: messagePayload?.text ?? null,
+      message_type: messagePayload?.message_type ?? messagePayload?.messageType ?? 'text',
+      file_name: messagePayload?.file_name ?? messagePayload?.fileName ?? null,
+      user_id: userData?.id || null,
+      username: userData?.username || null,
+      first_name: userData?.first_name || null,
+      last_name: userData?.last_name || null,
+      tg_init_data: webApp?.initData || null
+    };
+
+    try {
+      console.log('📤 [API] Отправляем message_miniapp:', payload);
+
+      const preparedFiles = Array.isArray(files) ? files.filter(Boolean) : [];
+      const hasFiles = preparedFiles.length > 0;
+      let response;
+
+      if (hasFiles) {
+        const formData = new FormData();
+        Object.entries(payload).forEach(([key, value]) => {
+          if (value === undefined || value === null) return;
+          formData.append(key, String(value));
+        });
+        preparedFiles.forEach((file) => {
+          formData.append('files', file, file.name);
+        });
+
+        response = await fetch(hookUrl, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json'
+          },
+          body: formData
+        });
+      } else {
+        response = await fetch(hookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json().catch(() => null);
+      console.log('✅ [API] Ответ message_miniapp:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ [API] Ошибка message_miniapp:', error);
+      return null;
+    }
+  }
+
+  ,
+
+  /**
    * При открытии страницы отправляем данные пользователя Telegram в вебхук
    * @param {Object} userData - tg.initDataUnsafe.user
    * @param {Object} webApp - window.Telegram.WebApp

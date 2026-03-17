@@ -1623,7 +1623,20 @@ const setupRequestDetailsView = () => {
     dialogModal.classList.add('hidden');
   };
 
-  const sendCurrentMessage = () => {
+  const sendMessageToMiniappWebhook = async (activeTask, payload, files = []) => {
+    if (!window.API?.sendMiniappMessage || !activeTask) return;
+
+    await window.API.sendMiniappMessage({
+      task_id: activeTask.taskId,
+      chat_id: activeTask.chatId,
+      org: activeTask.org,
+      text: payload?.text ?? null,
+      message_type: payload?.message_type ?? 'text',
+      file_name: payload?.file_name ?? null
+    }, user, tg, files);
+  };
+
+  const sendCurrentMessage = async () => {
     const text = input.value.trim();
     if (!text) return;
     const activeTask = requestsState.tasks.find((item) => item.taskId === requestsState.activeTaskId);
@@ -1641,6 +1654,7 @@ const setupRequestDetailsView = () => {
     renderRequestsList();
     renderDialogChat(activeTask);
     input.value = '';
+    await sendMessageToMiniappWebhook(activeTask, { text, message_type: 'text' });
   };
 
   requestsList.addEventListener('click', (event) => {
@@ -1657,11 +1671,15 @@ const setupRequestDetailsView = () => {
     }
   });
   attachBtn.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', () => {
+  fileInput.addEventListener('change', async () => {
     const files = Array.from(fileInput.files || []);
+    const activeTask = requestsState.tasks.find((item) => item.taskId === requestsState.activeTaskId);
+    if (!activeTask) {
+      fileInput.value = '';
+      return;
+    }
+
     files.forEach((file) => {
-      const activeTask = requestsState.tasks.find((item) => item.taskId === requestsState.activeTaskId);
-      if (!activeTask) return;
       activeTask.chat.push(normalizeTaskComment({
         task_id: activeTask.taskId,
         comment_id: `${Date.now()}-${file.name}`,
@@ -1673,6 +1691,15 @@ const setupRequestDetailsView = () => {
       renderRequestsList();
       renderDialogChat(activeTask);
     });
+
+    for (const file of files) {
+      await sendMessageToMiniappWebhook(activeTask, {
+        text: `Файл: ${file.name}`,
+        message_type: 'file',
+        file_name: file.name
+      }, [file]);
+    }
+
     fileInput.value = '';
   });
   dialogModal.addEventListener('click', (event) => {
