@@ -1176,7 +1176,24 @@ const normalizeTaskFromWebhook = (item) => {
 const extractTaskItemsFromResult = (result) => {
   const rootItems = Array.isArray(result) ? result : [result];
   return rootItems.flatMap((item) => {
+    if (!item) return [];
+    if (typeof item === 'string') {
+      try {
+        return extractTaskItemsFromResult(JSON.parse(item));
+      } catch (error) {
+        return [];
+      }
+    }
     if (Array.isArray(item?.data)) return item.data;
+    if (typeof item?.data === 'string') {
+      try {
+        const parsed = JSON.parse(item.data);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      } catch (error) {
+        return [];
+      }
+    }
+    if (item?.data && typeof item.data === 'object') return [item.data];
     return item ? [item] : [];
   });
 };
