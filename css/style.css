@@ -531,6 +531,9 @@ body.hide-main-logo #requests.page {
 
 .task-create-content {
   max-width: min(560px, 92vw);
+  max-height: min(88vh, 760px);
+  overflow-y: auto;
+  padding-bottom: 18px;
 }
 
 .task-create-label {
@@ -600,6 +603,10 @@ body.hide-main-logo #requests.page {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-top: 10px;
+  position: sticky;
+  bottom: 0;
+  background: #1e1e1e;
+  padding-top: 12px;
 }
 
 .task-create-actions .btn-Save,

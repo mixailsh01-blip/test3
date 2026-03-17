@@ -1326,7 +1326,7 @@ const setupTaskCreation = () => {
       });
     } finally {
       sendBtn.disabled = false;
-      sendBtn.textContent = 'Отправить заявку';
+      sendBtn.textContent = 'Создать задачу';
     }
   };
 
