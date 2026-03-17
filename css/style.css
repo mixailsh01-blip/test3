@@ -574,6 +574,15 @@ body.hide-main-logo #requests.page {
   margin-bottom: 8px;
 }
 
+.task-create-file-row .btn-CancelModal,
+.task-create-actions .btn-Save,
+.task-create-actions .btn-CancelModal {
+  opacity: 1;
+  transform: none;
+  max-width: none;
+  margin-top: 0;
+}
+
 .task-create-file-input {
   display: none;
 }
