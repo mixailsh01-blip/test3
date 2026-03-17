@@ -1245,6 +1245,16 @@ const syncCreatedTasksFromResult = (result) => {
   return requestsState.tasks[0] || null;
 };
 
+const syncOpenedChatFromResult = (result, fallbackTaskId = null) => {
+  const items = extractTaskItemsFromResult(result);
+  const normalizedTasks = items.map(normalizeTaskFromWebhook).filter(Boolean);
+  normalizedTasks.forEach(upsertRequestTask);
+  renderRequestsList();
+
+  if (!fallbackTaskId) return normalizedTasks[0] || null;
+  return requestsState.tasks.find((item) => item.taskId === String(fallbackTaskId)) || normalizedTasks[0] || null;
+};
+
 const getKnownEstablishments = () => {
   const dropdown = document.getElementById('main-dropdown');
   if (!dropdown) return [];
@@ -1579,6 +1589,24 @@ const setupRequestDetailsView = () => {
 
     renderDialogChat(task);
     dialogModal.classList.remove('hidden');
+
+    if (window.API?.sendOpenChat) {
+      window.API.sendOpenChat({
+        task_id: task.taskId,
+        chat_id: task.chatId,
+        org: task.org
+      }, user, tg)
+        .then((result) => {
+          if (!result) return;
+          const updatedTask = syncOpenedChatFromResult(result, task.taskId);
+          if (updatedTask && updatedTask.taskId === requestsState.activeTaskId) {
+            renderDialogChat(updatedTask);
+          }
+        })
+        .catch((error) => {
+          console.error('❌ Ошибка загрузки open_chat:', error);
+        });
+    }
   };
 
   const closeDialog = () => {

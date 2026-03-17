@@ -214,6 +214,55 @@ const API = {
   ,
 
   /**
+   * Загрузка истории диалога по задаче
+   * @param {Object} chatPayload - Данные задачи/чата
+   * @param {Object|null} userData - Данные пользователя Telegram
+   * @param {Object|null} webApp - Telegram WebApp
+   * @returns {Promise<any|null>} Ответ вебхука или null
+   */
+  async sendOpenChat(chatPayload = {}, userData = null, webApp = null) {
+    const hookUrl = 'https://quumahienot.beget.app/webhook/open_chat';
+    const payload = {
+      task_id: chatPayload?.task_id ?? chatPayload?.taskId ?? null,
+      chat_id: chatPayload?.chat_id ?? chatPayload?.chatId ?? null,
+      org: chatPayload?.org ?? null,
+      Client: chatPayload?.Client ?? chatPayload?.org ?? null,
+      ID: chatPayload?.ID ?? chatPayload?.establishment_id ?? null,
+      user_id: userData?.id || null,
+      username: userData?.username || null,
+      first_name: userData?.first_name || null,
+      last_name: userData?.last_name || null,
+      tg_init_data: webApp?.initData || null
+    };
+
+    try {
+      console.log('📤 [API] Отправляем open_chat:', payload);
+
+      const response = await fetch(hookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json().catch(() => null);
+      console.log('✅ [API] Ответ open_chat:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ [API] Ошибка open_chat:', error);
+      return null;
+    }
+  }
+
+  ,
+
+  /**
    * При открытии страницы отправляем данные пользователя Telegram в вебхук
    * @param {Object} userData - tg.initDataUnsafe.user
    * @param {Object} webApp - window.Telegram.WebApp
