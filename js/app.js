@@ -1159,6 +1159,8 @@ const normalizeTaskComment = (comment, fallbackText = '') => ({
   channelType: String(comment?.channel_type ?? 'custom')
 });
 
+const getCommentIdentity = (comment) => `${comment.commentId}|${comment.date}|${comment.author}|${comment.text}`;
+
 const normalizeTaskFromWebhook = (item) => {
   if (!item || (!item.task_id && !item.taskId)) return null;
   const taskId = String(item.task_id ?? item.taskId);
@@ -1174,7 +1176,8 @@ const normalizeTaskFromWebhook = (item) => {
     status: String(item.status ?? 'Новая'),
     chatId: String(item.chat_id ?? item.chatId ?? ''),
     chat: normalizedChat,
-    createdAt: lastMessage?.date || new Date().toISOString()
+    createdAt: lastMessage?.date || new Date().toISOString(),
+    unreadCount: 0
   };
 };
 
@@ -1203,11 +1206,25 @@ const extractTaskItemsFromResult = (result) => {
   });
 };
 
-const upsertRequestTask = (task) => {
+const markTaskAsRead = (taskId) => {
+  const task = requestsState.tasks.find((item) => item.taskId === String(taskId));
+  if (!task) return;
+  task.unreadCount = 0;
+};
+
+const upsertRequestTask = (task, options = {}) => {
   if (!task?.taskId) return;
+  const shouldMarkRead = options.markRead === true;
   const existingIndex = requestsState.tasks.findIndex((item) => item.taskId === task.taskId);
   if (existingIndex >= 0) {
     const existingTask = requestsState.tasks[existingIndex];
+    const existingKeys = new Set((existingTask.chat || []).map(getCommentIdentity));
+    const nextChat = task.chat.length > 0 ? task.chat : existingTask.chat;
+    const newIncomingCount = (task.chat || [])
+      .filter((message) => !existingKeys.has(getCommentIdentity(message)))
+      .filter((message) => message.author !== (user?.first_name || user?.username || 'Вы'))
+      .length;
+
     requestsState.tasks[existingIndex] = {
       ...existingTask,
       ...task,
@@ -1215,11 +1232,15 @@ const upsertRequestTask = (task) => {
       description: task.description || existingTask.description,
       status: task.status || existingTask.status,
       chatId: task.chatId || existingTask.chatId,
-      chat: task.chat.length > 0 ? task.chat : existingTask.chat,
-      createdAt: task.createdAt || existingTask.createdAt
+      chat: nextChat,
+      createdAt: task.createdAt || existingTask.createdAt,
+      unreadCount: shouldMarkRead ? 0 : (existingTask.unreadCount || 0) + newIncomingCount
     };
   } else {
-    requestsState.tasks.unshift(task);
+    requestsState.tasks.unshift({
+      ...task,
+      unreadCount: shouldMarkRead ? 0 : (task.unreadCount || 0)
+    });
   }
 };
 
@@ -1242,7 +1263,10 @@ const renderRequestsList = () => {
             <span class="request-status">${escapeHtml(task.status)}</span>
           </div>
           <div class="request-topic">${escapeHtml(task.description || 'Новая заявка')}</div>
-          <div class="request-meta">${escapeHtml(task.org)}</div>
+          <div class="request-meta-row">
+            <div class="request-meta">${escapeHtml(task.org)}</div>
+            ${task.unreadCount > 0 ? `<span class="request-unread-badge">${escapeHtml(task.unreadCount)}</span>` : ''}
+          </div>
           <div class="request-text">${escapeHtml(previewText)}</div>
         </div>
       `;
@@ -1255,7 +1279,7 @@ const syncCreatedTasksFromResult = (result) => {
   items
     .map(normalizeTaskFromWebhook)
     .filter(Boolean)
-    .forEach(upsertRequestTask);
+    .forEach((task) => upsertRequestTask(task));
   renderRequestsList();
   return requestsState.tasks[0] || null;
 };
@@ -1263,7 +1287,9 @@ const syncCreatedTasksFromResult = (result) => {
 const syncOpenedChatFromResult = (result, fallbackTaskId = null) => {
   const items = extractTaskItemsFromResult(result);
   const normalizedTasks = items.map(normalizeTaskFromWebhook).filter(Boolean);
-  normalizedTasks.forEach(upsertRequestTask);
+  normalizedTasks.forEach((task) => {
+    upsertRequestTask(task, { markRead: requestsState.activeTaskId === task.taskId });
+  });
   renderRequestsList();
 
   if (!fallbackTaskId) return normalizedTasks[0] || null;
@@ -1652,6 +1678,8 @@ const setupRequestDetailsView = () => {
     const task = requestsState.tasks.find((item) => item.taskId === String(taskId));
     if (!task) return;
     requestsState.activeTaskId = task.taskId;
+    markTaskAsRead(task.taskId);
+    renderRequestsList();
 
     const dialogNumber = document.getElementById('request-dialog-number');
     const dialogStatus = document.getElementById('request-dialog-status');
