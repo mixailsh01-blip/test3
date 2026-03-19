@@ -1228,6 +1228,10 @@ const getNextOpenChatPollDelay = (attempt) => {
 };
 
 const isPyrusAuthor = (author) => String(author || '').toLowerCase().includes('pyrus');
+const isTaskClosed = (task) => {
+  const normalizedStatus = String(task?.status || '').trim().toLowerCase();
+  return Boolean(task?.isClosed) || ['решена', 'закрыта', 'закрыт', 'closed'].includes(normalizedStatus);
+};
 
 const normalizeTaskFromWebhook = (item) => {
   if (!item || (!item.task_id && !item.taskId)) return null;
@@ -1806,7 +1810,7 @@ const setupRequestDetailsView = () => {
   };
 
   const updateDialogComposerState = (task) => {
-    const isClosed = Boolean(task?.isClosed);
+    const isClosed = isTaskClosed(task);
     composer.classList.toggle('hidden', isClosed);
     closedBanner.classList.toggle('hidden', !isClosed);
     input.disabled = isClosed;
@@ -1868,7 +1872,7 @@ const setupRequestDetailsView = () => {
     const text = input.value.trim();
     if (!text) return;
     const activeTask = requestsState.tasks.find((item) => item.taskId === requestsState.activeTaskId);
-    if (!activeTask || activeTask.isClosed) return;
+    if (!activeTask || isTaskClosed(activeTask)) return;
 
     activeTask.chat.push(normalizeTaskComment({
       task_id: activeTask.taskId,
@@ -1902,7 +1906,7 @@ const setupRequestDetailsView = () => {
   fileInput.addEventListener('change', async () => {
     const files = Array.from(fileInput.files || []);
     const activeTask = requestsState.tasks.find((item) => item.taskId === requestsState.activeTaskId);
-    if (!activeTask || activeTask.isClosed) {
+    if (!activeTask || isTaskClosed(activeTask)) {
       fileInput.value = '';
       return;
     }
