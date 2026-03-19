@@ -1126,6 +1126,11 @@ const openTaskSyncState = {
   lastSignature: '',
   inFlight: false
 };
+const openChatPollState = {
+  timerId: null,
+  startedAt: 0,
+  taskId: null
+};
 
 const escapeHtml = (value) => String(value ?? '')
   .replace(/&/g, '&amp;')
@@ -1557,6 +1562,67 @@ const setupRequestDetailsView = () => {
     return `${hours}:${minutes}`;
   };
 
+  const stopOpenChatPolling = () => {
+    if (openChatPollState.timerId) {
+      clearTimeout(openChatPollState.timerId);
+    }
+    openChatPollState.timerId = null;
+    openChatPollState.startedAt = 0;
+    openChatPollState.taskId = null;
+  };
+
+  const requestOpenChat = async (task) => {
+    if (!window.API?.sendOpenChat || !task) return null;
+
+    try {
+      const result = await window.API.sendOpenChat({
+        task_id: task.taskId,
+        chat_id: task.chatId,
+        org: task.org
+      }, user, tg);
+
+      if (!result) return null;
+      const updatedTask = syncOpenedChatFromResult(result, task.taskId);
+      if (updatedTask && updatedTask.taskId === requestsState.activeTaskId) {
+        renderDialogChat(updatedTask);
+      }
+      return updatedTask;
+    } catch (error) {
+      console.error('❌ Ошибка загрузки open_chat:', error);
+      return null;
+    }
+  };
+
+  const scheduleOpenChatPolling = (taskId) => {
+    stopOpenChatPolling();
+    openChatPollState.startedAt = Date.now();
+    openChatPollState.taskId = String(taskId);
+
+    const poll = async () => {
+      if (
+        !dialogModal.classList.contains('hidden') &&
+        requestsState.activeTaskId === openChatPollState.taskId
+      ) {
+        const activeTask = requestsState.tasks.find((item) => item.taskId === openChatPollState.taskId);
+        await requestOpenChat(activeTask);
+      }
+
+      const elapsed = Date.now() - openChatPollState.startedAt;
+      if (
+        elapsed >= 60000 ||
+        dialogModal.classList.contains('hidden') ||
+        requestsState.activeTaskId !== openChatPollState.taskId
+      ) {
+        stopOpenChatPolling();
+        return;
+      }
+
+      openChatPollState.timerId = setTimeout(poll, 8000);
+    };
+
+    openChatPollState.timerId = setTimeout(poll, 8000);
+  };
+
   const renderDialogChat = (task) => {
     dialogChat.innerHTML = '';
     if (!task || task.chat.length === 0) {
@@ -1599,27 +1665,12 @@ const setupRequestDetailsView = () => {
 
     renderDialogChat(task);
     dialogModal.classList.remove('hidden');
-
-    if (window.API?.sendOpenChat) {
-      window.API.sendOpenChat({
-        task_id: task.taskId,
-        chat_id: task.chatId,
-        org: task.org
-      }, user, tg)
-        .then((result) => {
-          if (!result) return;
-          const updatedTask = syncOpenedChatFromResult(result, task.taskId);
-          if (updatedTask && updatedTask.taskId === requestsState.activeTaskId) {
-            renderDialogChat(updatedTask);
-          }
-        })
-        .catch((error) => {
-          console.error('❌ Ошибка загрузки open_chat:', error);
-        });
-    }
+    requestOpenChat(task);
+    scheduleOpenChatPolling(task.taskId);
   };
 
   const closeDialog = () => {
+    stopOpenChatPolling();
     dialogModal.classList.add('hidden');
   };
 
