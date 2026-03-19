@@ -1227,6 +1227,8 @@ const getNextOpenChatPollDelay = (attempt) => {
   return OPEN_CHAT_POLL_DELAYS_MS[index];
 };
 
+const isPyrusAuthor = (author) => String(author || '').toLowerCase().includes('pyrus');
+
 const normalizeTaskFromWebhook = (item) => {
   if (!item || (!item.task_id && !item.taskId)) return null;
   const taskId = String(item.task_id ?? item.taskId);
@@ -1777,7 +1779,7 @@ const setupRequestDetailsView = () => {
     }
 
     task.chat.forEach((message) => {
-      const isOutgoing = message.author !== 'Pyrus';
+      const isOutgoing = isPyrusAuthor(message.author);
       const msg = document.createElement('div');
       msg.className = `request-msg ${isOutgoing ? 'request-msg-right request-msg-outgoing' : 'request-msg-left'}`;
       msg.innerHTML = `
