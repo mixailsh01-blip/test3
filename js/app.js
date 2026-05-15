@@ -3770,6 +3770,7 @@ const setupRequestDetailsView = () => {
   const fileViewerDownloadHeader = document.getElementById('file-viewer-download-header');
   let currentFileViewerUrl = '';
   let currentFileViewerName = '';
+  let currentFileViewerBlob = null;
   let lastAttachmentOpenAt = 0;
 
   const updateFileViewerHeaderDownload = () => {
@@ -3821,6 +3822,7 @@ const setupRequestDetailsView = () => {
     fileViewerBody.scrollTop = 0;
     fileViewerTitle.textContent = 'Файл';
     currentFileViewerName = '';
+    currentFileViewerBlob = null;
     if (currentFileViewerUrl) {
       URL.revokeObjectURL(currentFileViewerUrl);
       currentFileViewerUrl = '';
@@ -3870,6 +3872,21 @@ const setupRequestDetailsView = () => {
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
+  };
+
+  const saveFileFromViewer = async (blob, blobUrl, fileName) => {
+    if (blob instanceof Blob && navigator.share && navigator.canShare) {
+      try {
+        const shareFile = new File([blob], fileName, { type: blob.type || 'application/octet-stream' });
+        if (navigator.canShare({ files: [shareFile] })) {
+          await navigator.share({ files: [shareFile], title: fileName });
+          return;
+        }
+      } catch (error) {
+        console.warn('⚠️ [FileViewer] Share save failed, fallback to download:', error);
+      }
+    }
+    downloadBlobFile(blobUrl, fileName);
   };
 
   const getPdfJsLib = () => {
@@ -3986,6 +4003,7 @@ const setupRequestDetailsView = () => {
       }
 
       closeFileViewer();
+      currentFileViewerBlob = blob;
       currentFileViewerUrl = URL.createObjectURL(blob);
       currentFileViewerName = fileName;
       updateFileViewerHeaderDownload();
@@ -4019,8 +4037,8 @@ const setupRequestDetailsView = () => {
             <button id="file-viewer-download" class="file-viewer-download" type="button">Скачать файл</button>
           </div>
         `;
-        fileViewerBody.querySelector('#file-viewer-download')?.addEventListener('click', () => {
-          downloadBlobFile(currentFileViewerUrl, fileName);
+        fileViewerBody.querySelector('#file-viewer-download')?.addEventListener('click', async () => {
+          await saveFileFromViewer(currentFileViewerBlob, currentFileViewerUrl, fileName);
         });
       }
 
@@ -4028,9 +4046,9 @@ const setupRequestDetailsView = () => {
     }
   };
 
-  fileViewerDownloadHeader?.addEventListener('click', () => {
+  fileViewerDownloadHeader?.addEventListener('click', async () => {
     if (!currentFileViewerUrl || !currentFileViewerName) return;
-    downloadBlobFile(currentFileViewerUrl, currentFileViewerName);
+    await saveFileFromViewer(currentFileViewerBlob, currentFileViewerUrl, currentFileViewerName);
   });
 
   const fetchFile = async (filePayload = {}, fallbackName = 'file') => {
