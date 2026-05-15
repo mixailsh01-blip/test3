@@ -2650,20 +2650,6 @@ div.establishment-staff-role-select {
   text-overflow: ellipsis;
 }
 
-.file-viewer-close {
-  width: 42px;
-  height: 42px;
-  border: none;
-  border-radius: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #2c2f38;
-  color: #ffffff;
-  font-size: 18px;
-  flex: 0 0 auto;
-}
-
 .file-viewer-download-header {
   width: 42px;
   height: 42px;

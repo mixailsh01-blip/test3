@@ -3610,17 +3610,7 @@ const setupRequestDetailsView = () => {
     renderDialogChat(task);
     updateDialogComposerState(task);
     dialogModal.classList.remove('hidden');
-    if (tg?.BackButton) {
-      if (typeof tg.BackButton.offClick === 'function') {
-        tg.BackButton.offClick(closeDialog);
-      }
-      if (typeof tg.BackButton.onClick === 'function') {
-        tg.BackButton.onClick(closeDialog);
-      }
-      if (typeof tg.BackButton.show === 'function') {
-        tg.BackButton.show();
-      }
-    }
+    bindBackButtonToDialog();
     requestOpenChat(task);
     stopRequestsListOpenChatPolling();
     scheduleOpenChatPolling(task.taskId);
@@ -3778,7 +3768,6 @@ const setupRequestDetailsView = () => {
   const fileViewerBody = document.getElementById('file-viewer-body');
   const fileViewerTitle = document.getElementById('file-viewer-title');
   const fileViewerDownloadHeader = document.getElementById('file-viewer-download-header');
-  const fileViewerClose = document.getElementById('file-viewer-close');
   let currentFileViewerUrl = '';
   let currentFileViewerName = '';
   let lastAttachmentOpenAt = 0;
@@ -3795,6 +3784,34 @@ const setupRequestDetailsView = () => {
     fileViewerBody.classList.toggle('is-document', mode === 'document');
   };
 
+  const bindBackButtonToDialog = () => {
+    if (!tg?.BackButton) return;
+    if (typeof tg.BackButton.offClick === 'function') {
+      tg.BackButton.offClick(closeDialog);
+      tg.BackButton.offClick(closeFileViewer);
+    }
+    if (typeof tg.BackButton.onClick === 'function') {
+      tg.BackButton.onClick(closeDialog);
+    }
+    if (typeof tg.BackButton.show === 'function') {
+      tg.BackButton.show();
+    }
+  };
+
+  const bindBackButtonToFileViewer = () => {
+    if (!tg?.BackButton) return;
+    if (typeof tg.BackButton.offClick === 'function') {
+      tg.BackButton.offClick(closeDialog);
+      tg.BackButton.offClick(closeFileViewer);
+    }
+    if (typeof tg.BackButton.onClick === 'function') {
+      tg.BackButton.onClick(closeFileViewer);
+    }
+    if (typeof tg.BackButton.show === 'function') {
+      tg.BackButton.show();
+    }
+  };
+
   const closeFileViewer = () => {
     if (!fileViewerModal || !fileViewerBody || !fileViewerTitle) return;
     fileViewerModal.classList.add('hidden');
@@ -3809,6 +3826,9 @@ const setupRequestDetailsView = () => {
       currentFileViewerUrl = '';
     }
     updateFileViewerHeaderDownload();
+    if (dialogModal && !dialogModal.classList.contains('hidden')) {
+      bindBackButtonToDialog();
+    }
   };
 
   const openFileViewerShell = (title = 'Файл') => {
@@ -3969,6 +3989,7 @@ const setupRequestDetailsView = () => {
       currentFileViewerUrl = URL.createObjectURL(blob);
       currentFileViewerName = fileName;
       updateFileViewerHeaderDownload();
+      bindBackButtonToFileViewer();
       const blobType = String(blob.type || '').toLowerCase();
       const attachmentKind = classifyAttachmentKind({ name: fileName });
       const isImageFile = blobType.startsWith('image/') || attachmentKind === 'photo';
@@ -4215,7 +4236,6 @@ const setupRequestDetailsView = () => {
     if (!card?.dataset?.taskId) return;
     openDialog(card.dataset.taskId);
   });
-  fileViewerClose?.addEventListener('click', closeFileViewer);
   fileViewerModal?.addEventListener('click', (event) => {
     if (event.target === fileViewerModal) {
       closeFileViewer();
