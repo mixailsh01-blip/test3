@@ -2664,6 +2664,20 @@ div.establishment-staff-role-select {
   flex: 0 0 auto;
 }
 
+.file-viewer-download-header {
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #0c86ff 0%, #0560dc 100%);
+  color: #ffffff;
+  font-size: 17px;
+  flex: 0 0 auto;
+}
+
 .file-viewer-body {
   flex: 1;
   min-height: 0;

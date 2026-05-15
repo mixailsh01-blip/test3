@@ -3777,9 +3777,18 @@ const setupRequestDetailsView = () => {
   const fileViewerModal = document.getElementById('file-viewer-modal');
   const fileViewerBody = document.getElementById('file-viewer-body');
   const fileViewerTitle = document.getElementById('file-viewer-title');
+  const fileViewerDownloadHeader = document.getElementById('file-viewer-download-header');
   const fileViewerClose = document.getElementById('file-viewer-close');
   let currentFileViewerUrl = '';
+  let currentFileViewerName = '';
   let lastAttachmentOpenAt = 0;
+
+  const updateFileViewerHeaderDownload = () => {
+    if (!fileViewerDownloadHeader) return;
+    const isReady = Boolean(currentFileViewerUrl && currentFileViewerName);
+    fileViewerDownloadHeader.classList.toggle('hidden', !isReady);
+    fileViewerDownloadHeader.disabled = !isReady;
+  };
 
   const closeFileViewer = () => {
     if (!fileViewerModal || !fileViewerBody || !fileViewerTitle) return;
@@ -3787,10 +3796,12 @@ const setupRequestDetailsView = () => {
     fileViewerModal.setAttribute('aria-hidden', 'true');
     fileViewerBody.innerHTML = '';
     fileViewerTitle.textContent = 'Файл';
+    currentFileViewerName = '';
     if (currentFileViewerUrl) {
       URL.revokeObjectURL(currentFileViewerUrl);
       currentFileViewerUrl = '';
     }
+    updateFileViewerHeaderDownload();
   };
 
   const openFileViewerShell = (title = 'Файл') => {
@@ -3948,6 +3959,8 @@ const setupRequestDetailsView = () => {
 
       closeFileViewer();
       currentFileViewerUrl = URL.createObjectURL(blob);
+      currentFileViewerName = fileName;
+      updateFileViewerHeaderDownload();
       const blobType = String(blob.type || '').toLowerCase();
       const attachmentKind = classifyAttachmentKind({ name: fileName });
       const isImageFile = blobType.startsWith('image/') || attachmentKind === 'photo';
@@ -3982,6 +3995,11 @@ const setupRequestDetailsView = () => {
       openFileViewerShell(fileName);
     }
   };
+
+  fileViewerDownloadHeader?.addEventListener('click', () => {
+    if (!currentFileViewerUrl || !currentFileViewerName) return;
+    downloadBlobFile(currentFileViewerUrl, currentFileViewerName);
+  });
 
   const fetchFile = async (filePayload = {}, fallbackName = 'file') => {
     if (!window.API?.fetchFile) {
