@@ -4150,12 +4150,12 @@ const setupRequestDetailsView = () => {
   input.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter') return;
     if (isMobileDevice) return; // на телефоне Enter = перенос, отправка только кнопкой
-    if (!event.shiftKey) {
+    if (!event.shiftKey && !event.metaKey) {
       event.preventDefault();
       sendCurrentMessage();
       input.style.height = 'auto';
     }
-    // Shift+Enter — перенос строки, не перехватываем
+    // Shift+Enter / Cmd+Enter — перенос строки, не перехватываем
   });
   attachBtn.addEventListener('click', openFilePicker);
   window.visualViewport?.addEventListener('resize', syncKeyboardOffset);
