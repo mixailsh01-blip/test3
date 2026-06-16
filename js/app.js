@@ -4152,7 +4152,7 @@ const setupRequestDetailsView = () => {
     if (!event.target.closest('.request-composer-file-preview-remove')) return;
     clearSelectedDialogFile();
   });
-  const isMobileDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const autoResizeInput = () => {
     input.style.height = 'auto';
     input.style.height = Math.min(input.scrollHeight, 120) + 'px';
