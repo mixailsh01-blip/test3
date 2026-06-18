@@ -3613,7 +3613,9 @@ const setupRequestDetailsView = () => {
     const isAuthorized = await hasAuthorizedClientAccess();
     if (!isAuthorized) {
       requestDeepLinkState.awaitingAuthorization = true;
-      schedulePendingAuthorizedAction(executeRestaurantDeepLink, 0);
+      // Сохраняем колбэк без таймера — запустится только после того, как пользователь поделится номером
+      clearPendingAuthorizedAction();
+      pendingAuthorizedActionState.callback = executeRestaurantDeepLink;
       setContactShareLoading(false);
       showContactShareModal();
       return false;
